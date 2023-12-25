@@ -29,11 +29,7 @@ namespace Temply
         [STAThread]
         static void Main()
         {
-            var assembly = Assembly.GetExecutingAssembly();
-            var guidAttribute = (GuidAttribute)assembly.GetCustomAttributes(typeof(GuidAttribute), true)[0];
-            var applicationGuid = guidAttribute.Value;
-
-            using (var mutex = new Mutex(false, applicationGuid))
+            using (var mutex = new Mutex(false, ApplicationName))
             {
                 if (!mutex.WaitOne(0, false))
                 {
@@ -89,7 +85,7 @@ namespace Temply
             {
                 Icon = SystemIcons.Application,
                 Text = ApplicationName,
-                ContextMenu = CreateContextMenu(database, texts)
+                ContextMenuStrip = CreateContextMenu(database, texts)
             };
             notifyIcon.Visible = true;
             return notifyIcon;
@@ -111,7 +107,7 @@ namespace Temply
                 texts.ClearChain()
                     .AddRangeChain(ReadTexts(database))
                     .SortChain();
-                notifyIcon.ContextMenu = CreateContextMenu(database, texts);
+                notifyIcon.ContextMenuStrip = CreateContextMenu(database, texts);
 
                 watcher.EnableRaisingEvents = true;
             };
@@ -121,17 +117,18 @@ namespace Temply
         }
 
         private static // TODO ContextMenu is no longer supported. Use ContextMenuStrip instead. For more details see https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
-ContextMenu CreateContextMenu(string database, List<string> texts)
+ContextMenuStrip CreateContextMenu(string database, List<string> texts)
         {
             // TODO MenuItem is no longer supported. Use ToolStripMenuItem instead. For more details see https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
             var templateMenuItems = texts.Count <= 0
-                     ? new MenuItem[] { CreateNothingMenuItem() }
+                     ? new ToolStripMenuItem[] { CreateNothingMenuItem() }
                      : texts.Select(t => CreateTemplateMenuItem(t));
             var addMenuItem = CreateAddMenuItem(database, texts);
             var deleteMenuItem = CreateDeleteMenuItem(database, texts);
 
             // TODO ContextMenu is no longer supported. Use ContextMenuStrip instead. For more details see https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
-            var contextMenu = new ContextMenu(new List<MenuItem>()
+            var contextMenu = new ContextMenuStrip();
+            contextMenu.Items.AddRange(new List<ToolStripMenuItem>()
                 .AddChain(CreatetApplicationNameMenuItem())
                 .AddChain(CreateMenuItemSeparator())
                 .AddRangeChain(templateMenuItems)
@@ -144,7 +141,7 @@ ContextMenu CreateContextMenu(string database, List<string> texts)
                 .AddChain(CreateExitMenuItem())
                 .ToArray()
             );
-            contextMenu.Popup += (sender, e) =>
+            contextMenu.Opening += (sender, e) =>
             {
                 addMenuItem.Enabled = Clipboard.ContainsText();
                 deleteMenuItem.Enabled = 0 < texts.Count;
@@ -154,41 +151,41 @@ ContextMenu CreateContextMenu(string database, List<string> texts)
         }
 
         private static // TODO MenuItem is no longer supported. Use ToolStripMenuItem instead. For more details see https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
-MenuItem CreatetApplicationNameMenuItem()
+ToolStripMenuItem CreatetApplicationNameMenuItem()
         {
             var index = Application.ProductVersion.LastIndexOf('.');
             var version = Application.ProductVersion.Substring(0, index);
             // TODO MenuItem is no longer supported. Use ToolStripMenuItem instead. For more details see https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
-            return new MenuItem(string.Format("{0} {1}", ApplicationName, version));
+            return new ToolStripMenuItem(string.Format("{0} {1}", ApplicationName, version));
         }
 
         private static // TODO MenuItem is no longer supported. Use ToolStripMenuItem instead. For more details see https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
-MenuItem CreateMenuItemSeparator()
+ToolStripMenuItem CreateMenuItemSeparator()
         {
             // TODO MenuItem is no longer supported. Use ToolStripMenuItem instead. For more details see https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
-            return new MenuItem("-");
+            return new ToolStripMenuItem("-");
         }
 
         private static // TODO MenuItem is no longer supported. Use ToolStripMenuItem instead. For more details see https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
-MenuItem CreateNothingMenuItem()
+ToolStripMenuItem CreateNothingMenuItem()
         {
             // TODO MenuItem is no longer supported. Use ToolStripMenuItem instead. For more details see https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
-            return new MenuItem("(何もありません)") { Enabled = false };
+            return new ToolStripMenuItem("(何もありません)") { Enabled = false };
         }
 
         private static // TODO MenuItem is no longer supported. Use ToolStripMenuItem instead. For more details see https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
-MenuItem CreateTemplateMenuItem(string text)
+ToolStripMenuItem CreateTemplateMenuItem(string text)
         {
             var caption = Ellipsis(text, 60);
             // TODO MenuItem is no longer supported. Use ToolStripMenuItem instead. For more details see https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
-            return new MenuItem(caption, (sender, e) => Clipboard.SetText(Unescape(text)));
+            return new ToolStripMenuItem(caption, null, (sender, e) => Clipboard.SetText(Unescape(text)));
         }
 
         private static // TODO MenuItem is no longer supported. Use ToolStripMenuItem instead. For more details see https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
-MenuItem CreateAddMenuItem(string database, List<string> texts)
+ToolStripMenuItem CreateAddMenuItem(string database, List<string> texts)
         {
             // TODO MenuItem is no longer supported. Use ToolStripMenuItem instead. For more details see https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
-            return new MenuItem("クリップボードから追加(&A)", (sender, e) =>
+            return new ToolStripMenuItem("クリップボードから追加(&A)", null, (sender, e) =>
             {
                 var text = Clipboard.GetText();
                 var escapedText = Escape(text);
@@ -200,44 +197,44 @@ MenuItem CreateAddMenuItem(string database, List<string> texts)
         }
 
         private static // TODO MenuItem is no longer supported. Use ToolStripMenuItem instead. For more details see https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
-MenuItem CreateDeleteMenuItem(string database, List<string> texts)
+ToolStripMenuItem CreateDeleteMenuItem(string database, List<string> texts)
         {
             var subItems = texts.Select(t => CreateDeleteTemplateMenuItem(database, texts, t));
             // TODO MenuItem is no longer supported. Use ToolStripMenuItem instead. For more details see https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
-            return new MenuItem("削除(&D)", subItems.ToArray());
+            return new ToolStripMenuItem("削除(&D)", null, subItems.ToArray());
         }
 
         private static // TODO MenuItem is no longer supported. Use ToolStripMenuItem instead. For more details see https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
-MenuItem CreateSettingMenuItem()
+ToolStripMenuItem CreateSettingMenuItem()
         {
             // TODO MenuItem is no longer supported. Use ToolStripMenuItem instead. For more details see https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
-            var subItems = new MenuItem[] { CreateAutorunMenuItem() };
+            var subItems = new ToolStripMenuItem[] { CreateAutorunMenuItem() };
             // TODO MenuItem is no longer supported. Use ToolStripMenuItem instead. For more details see https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
-            return new MenuItem("設定(&S)", subItems);
+            return new ToolStripMenuItem("設定(&S)", null, subItems);
         }
 
         private static // TODO MenuItem is no longer supported. Use ToolStripMenuItem instead. For more details see https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
-MenuItem CreateExitMenuItem()
+ToolStripMenuItem CreateExitMenuItem()
         {
             // TODO MenuItem is no longer supported. Use ToolStripMenuItem instead. For more details see https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
-            return new MenuItem("終了(&X)", (sender, e) => Application.Exit());
+            return new ToolStripMenuItem("終了(&X)", null, (sender, e) => Application.Exit());
         }
 
         private static // TODO MenuItem is no longer supported. Use ToolStripMenuItem instead. For more details see https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
-MenuItem CreateDeleteTemplateMenuItem(string database, List<string> texts, string text)
+ToolStripMenuItem CreateDeleteTemplateMenuItem(string database, List<string> texts, string text)
         {
             var caption = Ellipsis(text, 60);
             // TODO MenuItem is no longer supported. Use ToolStripMenuItem instead. For more details see https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
-            return new MenuItem(caption, (sender, e) => DeleteText(database, texts, text));
+            return new ToolStripMenuItem(caption, null, (sender, e) => DeleteText(database, texts, text));
         }
 
         private static // TODO MenuItem is no longer supported. Use ToolStripMenuItem instead. For more details see https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
-MenuItem CreateAutorunMenuItem()
+ToolStripMenuItem CreateAutorunMenuItem()
         {
             // TODO MenuItem is no longer supported. Use ToolStripMenuItem instead. For more details see https://docs.microsoft.com/en-us/dotnet/core/compatibility/winforms#removed-controls
-            var autorunMenuItem = new MenuItem("自動起動(&A)", (sender, e) =>
+            var autorunMenuItem = new ToolStripMenuItem("自動起動(&A)", null, (sender, e) =>
             {
-                var mi = sender as MenuItem;
+                var mi = sender as ToolStripMenuItem;
                 var isAutorun = IsAutorun();
                 var registryKey = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
                 if (isAutorun)
