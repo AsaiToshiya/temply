@@ -124,7 +124,7 @@ namespace Temply
             var deleteMenuItem = CreateDeleteMenuItem(database, texts);
 
             var contextMenu = new ContextMenuStrip();
-            contextMenu.Items.AddRange(new List<ToolStripMenuItem>()
+            contextMenu.Items.AddRange(new List<ToolStripItem>()
                 .AddChain(CreatetApplicationNameMenuItem())
                 .AddChain(CreateMenuItemSeparator())
                 .AddRangeChain(templateMenuItems)
@@ -153,9 +153,9 @@ namespace Temply
             return new ToolStripMenuItem(string.Format("{0} {1}", ApplicationName, version));
         }
 
-        private static ToolStripMenuItem CreateMenuItemSeparator()
+        private static ToolStripSeparator CreateMenuItemSeparator()
         {
-            return new ToolStripMenuItem("-");
+            return new ToolStripSeparator();
         }
 
         private static ToolStripMenuItem CreateNothingMenuItem()
