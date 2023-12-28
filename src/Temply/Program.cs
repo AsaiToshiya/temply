@@ -29,11 +29,7 @@ namespace Temply
         [STAThread]
         static void Main()
         {
-            var assembly = Assembly.GetExecutingAssembly();
-            var guidAttribute = (GuidAttribute)assembly.GetCustomAttributes(typeof(GuidAttribute), true)[0];
-            var applicationGuid = guidAttribute.Value;
-
-            using (var mutex = new Mutex(false, applicationGuid))
+            using (var mutex = new Mutex(false, ApplicationName))
             {
                 if (!mutex.WaitOne(0, false))
                 {
@@ -88,7 +84,7 @@ namespace Temply
             {
                 Icon = SystemIcons.Application,
                 Text = ApplicationName,
-                ContextMenu = CreateContextMenu(database, texts)
+                ContextMenuStrip = CreateContextMenu(database, texts)
             };
             notifyIcon.Visible = true;
             return notifyIcon;
@@ -110,7 +106,7 @@ namespace Temply
                 texts.ClearChain()
                     .AddRangeChain(ReadTexts(database))
                     .SortChain();
-                notifyIcon.ContextMenu = CreateContextMenu(database, texts);
+                notifyIcon.ContextMenuStrip = CreateContextMenu(database, texts);
 
                 watcher.EnableRaisingEvents = true;
             };
@@ -119,15 +115,16 @@ namespace Temply
             return watcher;
         }
 
-        private static ContextMenu CreateContextMenu(string database, List<string> texts)
+        private static ContextMenuStrip CreateContextMenu(string database, List<string> texts)
         {
             var templateMenuItems = texts.Count <= 0
-                     ? new MenuItem[] { CreateNothingMenuItem() }
+                     ? new ToolStripMenuItem[] { CreateNothingMenuItem() }
                      : texts.Select(t => CreateTemplateMenuItem(t));
             var addMenuItem = CreateAddMenuItem(database, texts);
             var deleteMenuItem = CreateDeleteMenuItem(database, texts);
 
-            var contextMenu = new ContextMenu(new List<MenuItem>()
+            var contextMenu = new ContextMenuStrip();
+            contextMenu.Items.AddRange(new List<ToolStripItem>()
                 .AddChain(CreatetApplicationNameMenuItem())
                 .AddChain(CreateMenuItemSeparator())
                 .AddRangeChain(templateMenuItems)
@@ -140,7 +137,7 @@ namespace Temply
                 .AddChain(CreateExitMenuItem())
                 .ToArray()
             );
-            contextMenu.Popup += (sender, e) =>
+            contextMenu.Opening += (sender, e) =>
             {
                 addMenuItem.Enabled = Clipboard.ContainsText();
                 deleteMenuItem.Enabled = 0 < texts.Count;
@@ -149,32 +146,32 @@ namespace Temply
             return contextMenu;
         }
 
-        private static MenuItem CreatetApplicationNameMenuItem()
+        private static ToolStripMenuItem CreatetApplicationNameMenuItem()
         {
             var index = Application.ProductVersion.LastIndexOf('.');
             var version = Application.ProductVersion.Substring(0, index);
-            return new MenuItem(string.Format("{0} {1}", ApplicationName, version));
+            return new ToolStripMenuItem(string.Format("{0} {1}", ApplicationName, version));
         }
 
-        private static MenuItem CreateMenuItemSeparator()
+        private static ToolStripSeparator CreateMenuItemSeparator()
         {
-            return new MenuItem("-");
+            return new ToolStripSeparator();
         }
 
-        private static MenuItem CreateNothingMenuItem()
+        private static ToolStripMenuItem CreateNothingMenuItem()
         {
-            return new MenuItem("(何もありません)") { Enabled = false };
+            return new ToolStripMenuItem("(何もありません)") { Enabled = false };
         }
 
-        private static MenuItem CreateTemplateMenuItem(string text)
+        private static ToolStripMenuItem CreateTemplateMenuItem(string text)
         {
             var caption = Ellipsis(text, 60);
-            return new MenuItem(caption, (sender, e) => Clipboard.SetText(Unescape(text)));
+            return new ToolStripMenuItem(caption, null, (sender, e) => Clipboard.SetText(Unescape(text)));
         }
 
-        private static MenuItem CreateAddMenuItem(string database, List<string> texts)
+        private static ToolStripMenuItem CreateAddMenuItem(string database, List<string> texts)
         {
-            return new MenuItem("クリップボードから追加(&A)", (sender, e) =>
+            return new ToolStripMenuItem("クリップボードから追加(&A)", null, (sender, e) =>
             {
                 var text = Clipboard.GetText();
                 var escapedText = Escape(text);
@@ -185,34 +182,34 @@ namespace Temply
             });
         }
 
-        private static MenuItem CreateDeleteMenuItem(string database, List<string> texts)
+        private static ToolStripMenuItem CreateDeleteMenuItem(string database, List<string> texts)
         {
             var subItems = texts.Select(t => CreateDeleteTemplateMenuItem(database, texts, t));
-            return new MenuItem("削除(&D)", subItems.ToArray());
+            return new ToolStripMenuItem("削除(&D)", null, subItems.ToArray());
         }
 
-        private static MenuItem CreateSettingMenuItem()
+        private static ToolStripMenuItem CreateSettingMenuItem()
         {
-            var subItems = new MenuItem[] { CreateAutorunMenuItem() };
-            return new MenuItem("設定(&S)", subItems);
+            var subItems = new ToolStripMenuItem[] { CreateAutorunMenuItem() };
+            return new ToolStripMenuItem("設定(&S)", null, subItems);
         }
 
-        private static MenuItem CreateExitMenuItem()
+        private static ToolStripMenuItem CreateExitMenuItem()
         {
-            return new MenuItem("終了(&X)", (sender, e) => Application.Exit());
+            return new ToolStripMenuItem("終了(&X)", null, (sender, e) => Application.Exit());
         }
 
-        private static MenuItem CreateDeleteTemplateMenuItem(string database, List<string> texts, string text)
+        private static ToolStripMenuItem CreateDeleteTemplateMenuItem(string database, List<string> texts, string text)
         {
             var caption = Ellipsis(text, 60);
-            return new MenuItem(caption, (sender, e) => DeleteText(database, texts, text));
+            return new ToolStripMenuItem(caption, null, (sender, e) => DeleteText(database, texts, text));
         }
 
-        private static MenuItem CreateAutorunMenuItem()
+        private static ToolStripMenuItem CreateAutorunMenuItem()
         {
-            var autorunMenuItem = new MenuItem("自動起動(&A)", (sender, e) =>
+            var autorunMenuItem = new ToolStripMenuItem("自動起動(&A)", null, (sender, e) =>
             {
-                var mi = sender as MenuItem;
+                var mi = sender as ToolStripMenuItem;
                 var isAutorun = IsAutorun();
                 var registryKey = Registry.CurrentUser.OpenSubKey("SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run", true);
                 if (isAutorun)
